@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# AvrStudio Solution File, Format Version 11.00
+Project("{D1100916-62DA-4D80-A9B4-55A1E7CCEEB3}") = "hardmod", "hardmod\hardmod.avrgccproj", "{4C0C9BDC-2CA5-4440-93C4-DB9FA17CF6BD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4C0C9BDC-2CA5-4440-93C4-DB9FA17CF6BD}.Debug|AVR.ActiveCfg = Debug|AVR
+		{4C0C9BDC-2CA5-4440-93C4-DB9FA17CF6BD}.Debug|AVR.Build.0 = Debug|AVR
+		{4C0C9BDC-2CA5-4440-93C4-DB9FA17CF6BD}.Release|AVR.ActiveCfg = Release|AVR
+		{4C0C9BDC-2CA5-4440-93C4-DB9FA17CF6BD}.Release|AVR.Build.0 = Release|AVR
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

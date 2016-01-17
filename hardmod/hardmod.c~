@@ -1,0 +1,1123 @@
+/*
+ * hardmod.c
+ *
+ * Created: 8/11/2011 4:08:44 PM
+ *  Author: Eric
+ */ 
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/pgmspace.h>
+#include "format.h"
+#include "song.h"
+
+#ifndef MCU
+# error MCU must be defined
+#endif
+
+#if MCU == atmega328p
+# define OCR_LEFT OCR1B
+# define OCR_RIGHT OCR2B
+#else 
+# if MCU == atmega32u4
+#  define OCR_LEFT OCR1B
+#  define OCR_RIGHT OCR3A
+# endif
+#endif
+
+#define NULL ((void*)0)
+
+#define F_DAC 44100UL
+u16 realdac;
+#define AMIGA_DIV /*7093789UL*/ 7159091UL
+#define PeriodToHz(T) (AMIGA_DIV / (T<<1))
+#define HzToPeriod(h) (((u16)(AMIGA_DIV / h))>>1)
+
+#if (F_CPU/(8*F_DAC)-1) > 255
+#	define TMRDIV 64
+#else
+#	define TMRDIV 8
+#endif
+
+#define TMROCR (F_CPU/(TMRDIV*F_DAC)-1)
+#define SREAL (F_CPU/(TMRDIV*(TMROCR+1)))
+
+#define AMIGAF (256*AMIGA_DIV)/SREAL
+
+#if AMIGAF <= 65535
+#	define DPT u16
+#else
+#	define DPT u32
+#endif
+
+const DPT dacPeriod = AMIGAF;
+
+//#define PeriodToInc(period) (AMIGAF/period)>>1
+
+inline u16 PeriodToInc(u16 T)
+{
+	return (AMIGAF/T)>>1;
+}
+
+#define ABS(n) ((n > 0) ? n : -n)
+
+inline u8 ABS8(s8 v)
+{
+	return (v ^ (v >> 7)) - (v >> 7);
+}
+
+struct sections_s sections;
+u8 order[128];
+
+struct vibrato_s
+{
+	u8 speed;
+	u8 depth;
+	u8 waveform;
+	s8 pos;
+	s16 slide;
+};
+
+static const u8 vibratoTab[32] =
+{
+       0, 24, 49, 74, 97,120,141,161,
+     180,197,212,224,235,244,250,253,
+     255,253,250,244,235,224,212,197,
+     180,161,141,120, 97, 74, 49, 24
+};
+
+struct channel_s
+{
+	u8 inst;
+	s8 volume;	// current volume on channel
+	u8 pan;
+	u8 note;	// last played note on channel
+	u8 effect;
+	u8 param;
+	u16 freq;	// frequency (increment) on channel
+	u8 arptick;
+	u8 retrigtick;
+	
+	u8 portaspeed;
+	u16 portaperiod;
+	
+	s8 looprow;
+	u8 loopcount;
+	
+	struct vibrato_s vib;
+	struct vibrato_s trem;
+}channel[4];
+
+struct audiochannel_s
+{
+	u16 offset;		// current offset in file for sample. a zero means inactive channel	
+	u32 pos;		// fixed point position, >>8 for real pos
+	u16 inc;		// current increment
+	u8  volume;
+	u8 pan;
+	u32 length;
+	u32 looplength; 
+}mixchn[4];
+
+struct inst_s
+{
+	u16 length;
+	s8 finetune;
+	u8 volume;
+	u16 loopstart;
+	u16 looplength;
+}inst[31];
+
+u16 sample[31];	// table of offsets for samples 
+u16 bpmtab[256-32];
+
+#define BPM(n) (bpmtab[n-32])
+
+u8 curorder;
+s8 currow;
+u8 curtick;
+
+u8 nextorder;
+s8 breakrow;
+
+#define MOD_PAT_BREAK 0b00000001
+#define MOD_PAT_JUMP  0b00000010
+u8 breakjump;
+
+struct note_s
+{
+	u8 number;
+	u8 effect;
+	u8 inst;
+	u8 param;	
+};
+
+struct pattern_s
+{
+	u8 number;
+	u16 offset;
+	u16 index;
+}curpattern;
+
+#define MOD_FLG_CLEAR		0b00000000
+#define MOD_FLG_UPDATEVOL   0b00000001
+#define MOD_FLG_UPDATEPITCH 0b00000010
+#define MOD_FLG_UPDATEINST  0b00000100
+#define MOD_FLG_UPDATEPAN   0b00001000
+#define MOD_FLG_PLAYNOTE	0b00010000
+
+struct update_s
+{
+	struct channel_s*		chn;
+	struct audiochannel_s*  sndchn;
+	
+	struct note_s			note;
+	
+	u8						flags;
+};
+
+const struct update_s rowUpdate = {NULL, NULL, {NO_NOTE, NO_INST_PATTERN, 0, 0}, MOD_FLG_PLAYNOTE};
+const struct update_s tickUpdate = {NULL, NULL, {NO_NOTE, NO_INST, 0, 0}, MOD_FLG_CLEAR};
+
+
+#define	SONG_STATE_STOP 0
+#define	SONG_STATE_PLAY 1
+volatile u8 song_state;
+volatile u8 in_update = 0;
+	
+u8 speed;
+u16 bpm;
+u8 realbpm;
+volatile u8 playtick;
+volatile u16 ticktimer;
+
+#include "effects.h"
+
+inline u8 readsongbyte(u16 offset)
+{
+	return pgm_read_byte_near(&songdata[0] + offset);
+}
+
+inline s8 readsongbytesigned(u16 offset)
+{
+	return (s8)pgm_read_byte_near(&songdata[0] + offset);
+}
+
+inline u16 readsongword(u16 offset)
+{
+	return pgm_read_word_near(&songdata[0] + offset);
+}
+
+inline void readsongblock(u16 offset, void* dest, u16 num)
+{
+	u16 n;
+	u8* block;
+	
+	block = (u8*)dest;
+	for( n=0; n<num; ++n )
+	{
+		block[n] = readsongbyte(offset+n);
+	}
+}
+
+u8 havevalidsong()
+{
+	s8 sig[4];
+	
+	readsongblock(0, sig, 4);
+	if( (sig[0] == 'A') && (sig[1] == 'V') && (sig[2] == 'R') && (sig[3] == 'M') )
+	{
+		return 1;
+	}
+	
+	return 0;
+}
+
+inline u8 setpattern(struct pattern_s* pat, u8 n, u8 row)
+{
+	if(n >= sections.numpatterns)
+	{
+		return 0; //false, invalid pattern
+	}
+	
+	pat->number = n;
+	pat->offset = sections.offsetpatterns + (n*PATTERN_SIZE);
+	pat->index = NOTE_SIZE * PATTERN_CHANNELS * row;
+	
+	return 1;
+}
+
+inline s16 pitchslide(s16 period, s16 slide)
+{
+	period += slide;
+	if(period > MAX_PERIOD)
+	{
+		period = MAX_PERIOD;
+	}
+	else if(period < MIN_PERIOD)
+	{
+		period = MIN_PERIOD;
+	}
+	
+	return period;
+}
+
+u8 seek(u8 order, s8 row);
+
+void initmodule()
+{
+	u8 idx;
+	u8 balance;
+	u16 offset;
+	
+	// we gotta read the section table
+	readsongblock(4, &sections, sizeof(struct sections_s));	
+	
+	// get the order table
+	readsongblock(sections.offsetorders, order, sections.numorders * sizeof(u8));
+	
+	// get the instruments
+	readsongblock(sections.offsetinsts, inst, sections.numinsts * sizeof(struct inst_s));
+	
+	// generate a table for sample offsets
+	offset = sections.offsetsamples;
+	for( idx=0; idx<sections.numinsts; ++idx )
+	{
+		sample[idx] = offset;
+		offset += (inst[idx].length<<1); //*2
+	}
+	
+	// generate a BPM table
+	for( idx=0; idx<256-32; ++idx )
+	{
+		bpmtab[idx] = F_DAC / ((((u16)idx+32)<<1)/5);
+	}
+	
+	//dacPeriod = HzToPeriod(F_DAC)<<8;
+	
+	//generate the note table
+	/*for( idx=0; idx<NUM_NOTES; ++idx )
+	{
+		noteTable[idx] = PeriodToInc(periodTable[idx]);
+	}*/
+	
+	seek(0, 0);
+	
+	curtick = DEFAULT_SPEED;
+	speed = DEFAULT_SPEED; 
+	bpm   = BPM(DEFAULT_BPM);
+	realbpm = DEFAULT_BPM;
+	
+	breakjump = 0;
+	
+	for(idx = 0; idx < 4; ++idx)
+	{
+		channel[idx].note =		 NO_NOTE;
+		channel[idx].portaperiod = NO_PERIOD;
+		channel[idx].looprow = 0;
+		channel[idx].loopcount = 0;
+		mixchn[idx].offset = 0;
+
+		uint8_t remainder = idx % 4;
+		if(remainder == 1 || remainder == 2)
+			channel[idx].pan = mixchn[idx].pan = 63;
+		else
+			channel[idx].pan = mixchn[idx].pan = 0;
+	}
+
+	
+	song_state = SONG_STATE_PLAY;
+}
+
+inline void unpacknote(u16 offset, struct note_s* note)
+{
+	u8 notepacked[3];
+	
+	readsongblock(offset, notepacked, 3); 
+	
+/** Pattern Packing Format **
+	*  uses 3 bytes per note
+	*     -00-     -01-     -02-
+	*  |  BYTE  |  BYTE  |  BYTE  |
+	*   AAAAAABB BBCCCCCX DDDDDDDD
+	*
+	*  NOTE NUMBER = AAAAAA
+	*  EFFECT      = BBBB
+	*  INST NUMBER = CCCCC
+	*  EFFECT PARM = DDDDDDDD
+	*  UNUSED      = X
+*/	
+
+	note->number = notepacked[0]>>2;
+	note->effect = ((notepacked[0]&0b00000011)<<2) | (notepacked[1]>>6);
+	note->inst   = (notepacked[1]>>1)&0b00011111;
+	note->param  = notepacked[2];
+}
+
+void playnote(struct update_s* upd)
+{	
+	register struct inst_s* cur;
+	
+	if(upd->chn->inst == NO_INST)
+	{
+		return;
+	}
+	
+	cur = &inst[upd->chn->inst];
+	
+	upd->chn->freq = periodTable[upd->chn->note];
+	if(upd->chn->freq > MAX_PERIOD)
+	{
+		upd->chn->freq = MAX_PERIOD;
+	}	
+		
+	upd->sndchn->offset = sample[upd->chn->inst];
+	upd->sndchn->pos = 0;
+	
+	upd->flags |= MOD_FLG_UPDATEPITCH;
+	
+	upd->sndchn->length = (cur->looplength)?(((u32)(cur->loopstart+cur->looplength))<<9):(((u32)cur->length)<<9);
+	upd->sndchn->looplength = (u32)(cur->looplength)<<9;
+}
+
+/*inline*/ void update(struct update_s* upd)
+{	
+	if((upd->note.number != NO_NOTE) && (upd->flags & MOD_FLG_PLAYNOTE))
+	{
+		playnote(upd);
+	}
+	
+	if(upd->flags & MOD_FLG_UPDATEVOL)
+	{
+		upd->sndchn->volume = upd->chn->volume;
+	}
+
+	if(upd->flags & MOD_FLG_UPDATEPAN)
+	{
+		upd->sndchn->pan = upd->chn->pan;
+	}
+	
+	if(upd->flags & MOD_FLG_UPDATEPITCH)
+	{
+		u16 period = upd->chn->freq;
+		
+		if(upd->chn->vib.slide != 0)
+		{
+			period = pitchslide(period, upd->chn->vib.slide);
+			upd->chn->vib.slide = 0;
+		}
+		
+		upd->sndchn->inc = PeriodToInc(period);
+	}
+}
+
+void row()
+{
+	u8 n;
+	struct update_s upd;
+	
+	for( n=0; n<PATTERN_CHANNELS; ++n )
+	{
+		//upd = rowUpdate;
+		memcpy(&upd, &rowUpdate, sizeof(struct update_s));
+		upd.chn = &channel[n];
+		upd.sndchn = &mixchn[n];
+		
+		unpacknote(curpattern.offset + curpattern.index, &upd.note);
+		
+		upd.chn->effect = upd.note.effect;
+		upd.chn->param = upd.note.param;
+		
+		if(upd.note.inst != NO_INST_PATTERN)
+		{
+			upd.chn->inst = upd.note.inst-1;
+			upd.chn->volume = inst[upd.chn->inst].volume;
+			upd.flags |= MOD_FLG_UPDATEVOL;
+		}
+		
+		if(upd.note.number != NO_NOTE)
+		{
+			upd.chn->note = upd.note.number;
+		}
+		
+		// fix pitch from previous arpeggio
+		if(upd.chn->arptick != 0) {
+			upd.chn->arptick = 0;
+			upd.chn->freq = periodTable[upd.chn->note];
+			upd.flags |= MOD_FLG_UPDATEPITCH;
+		}
+		
+		//do row fx
+		if(upd.note.effect || upd.note.param)
+		{
+			if(roweffect[upd.note.effect])
+			{
+				roweffect[upd.note.effect](&upd);
+			}
+		}
+		
+		update(&upd);
+		curpattern.index += NOTE_SIZE;	
+	}
+}
+
+void tickefx()
+{
+	u8 n;
+	struct update_s upd;
+	
+	for( n=0; n<PATTERN_CHANNELS; ++n )
+	{
+		//upd = tickUpdate;
+		memcpy(&upd, &tickUpdate, sizeof(struct update_s));
+		upd.chn = &channel[n];
+		if(upd.chn->effect || upd.chn->param)
+		{
+			upd.sndchn = &mixchn[n];
+		
+			if(tickeffect[upd.chn->effect])
+			{
+				tickeffect[upd.chn->effect](&upd);
+				update(&upd);
+			}
+		}		
+	}	
+}
+
+u8 seek(u8 ord, s8 row)
+{
+	curorder = ord;
+	if(curorder >= sections.numorders)
+	{
+		//song_state = SONG_STATE_STOP;
+		//return 0;
+		curorder = 0;
+		currow = 0;
+	}
+	
+	currow = row;
+	if(currow >= PATTERN_ROWS)
+	{
+		currow = 0;
+	}
+	
+	nextorder = curorder + 1;
+	breakrow = 0;
+	breakjump = 0;
+	
+	setpattern(&curpattern, order[curorder], currow);
+	
+	return 1;
+}
+
+void tick()
+{
+	in_update = 1;
+	if(++curtick >= speed)
+	{
+		curtick = 0;
+		if(currow++ >= PATTERN_ROWS)
+		{
+			if(!seek(nextorder, breakrow))
+			{
+				return;
+			}
+			
+			currow++;
+		}
+		row();
+	}
+	else
+	{
+		tickefx();
+	}
+	in_update = 0;
+}
+
+void efx0_row(struct update_s* upd)
+{
+	upd->chn->arptick = 0;
+}	
+void efx1_row(struct update_s* upd)
+{
+}	
+void efx2_row(struct update_s* upd)
+{
+}	
+void efx3_row(struct update_s* upd)
+{
+	if (upd->note.number != NO_NOTE) {
+		upd->chn->portaperiod = periodTable[upd->note.number];
+		upd->flags &= ~MOD_FLG_PLAYNOTE;
+	}
+	if (upd->chn->param > 0) {
+		upd->chn->portaspeed = upd->chn->param;
+	}
+			
+	if (upd->chn->inst == NO_INST) {
+		upd->chn->param = upd->chn->effect = 0;
+	}
+}	
+void efx4_row(struct update_s* upd)
+{
+	u8 paramx = upd->note.param >> 4;
+	u8 paramy = upd->note.param & 0x0F;
+	
+	if(paramx)
+	{
+		upd->chn->vib.speed = paramx;
+	}	
+	if(paramy)
+	{
+		upd->chn->vib.depth = paramy;
+	}
+	
+	if(upd->chn->vib.waveform < 4 && upd->note.number != NO_NOTE)
+	{
+		upd->chn->vib.pos = 0;
+	}
+}	
+void efx5_row(struct update_s* upd)
+{
+}	
+void efx6_row(struct update_s* upd)
+{
+}	
+void efx7_row(struct update_s* upd)
+{
+}	
+void efx8_row(struct update_s* upd)
+{
+	upd->chn->pan = upd->chn->param;
+	upd->flags |= MOD_FLG_UPDATEPAN;
+}	
+void efx9_row(struct update_s* upd)
+{
+}
+void efxA_row(struct update_s* upd)
+{
+}	
+void efxB_row(struct update_s* upd)
+{
+	nextorder = upd->chn->param;
+	currow = PATTERN_ROWS;
+	breakrow = 0;
+	
+	breakjump |= MOD_PAT_JUMP;
+}	
+void efxC_row(struct update_s* upd)
+{
+	upd->chn->volume = upd->note.param;
+	upd->flags |= MOD_FLG_UPDATEVOL;
+}	
+void efxD_row(struct update_s* upd)
+{
+	breakrow = ((upd->chn->param>>4) * 10) + (upd->chn->param&0x0F);
+	if((~breakjump) & (MOD_PAT_BREAK + MOD_PAT_JUMP))
+	{
+		currow = PATTERN_ROWS;
+		nextorder = curorder + 1;
+	}
+	breakjump |= MOD_PAT_BREAK;
+}	
+void efxE_row(struct update_s* upd)
+{
+	u8 param = upd->chn->param & 0x0F;
+	switch(upd->chn->param>>4)
+	{
+		case 0x0:
+		break;
+		
+		case 0x1:
+			upd->chn->freq = pitchslide(upd->chn->freq, param);
+			upd->flags |= MOD_FLG_UPDATEPITCH;
+		break;
+		
+		case 0x2:
+			upd->chn->freq = pitchslide(upd->chn->freq, -(s16)param);
+			upd->flags |= MOD_FLG_UPDATEPITCH;
+		break;
+		
+		case 0x3:
+		break;
+		
+		case 0x4:
+			if(param <= 7)
+			{
+				upd->chn->vib.waveform = param;
+			}
+			else
+			{
+				upd->chn->vib.waveform = 0;
+			}			
+		break;
+		
+		case 0x5:
+			inst[upd->note.inst].finetune = param;
+		break;
+		
+		case 0x6:
+			if(param == 0)
+			{
+				upd->chn->looprow = currow;
+			}
+			else
+			{
+				if(upd->chn->loopcount == 0)
+				{
+					upd->chn->loopcount = param;
+				}
+				else
+				{
+					upd->chn->loopcount--;
+				}
+				
+				if(upd->chn->loopcount > 0)
+				{
+					breakrow = upd->chn->looprow-1;
+					currow = PATTERN_ROWS;
+					nextorder = curorder;
+				}
+			}
+		break;
+		
+		case 0x7:
+		break;
+		
+		case 0x8:
+		break;
+		
+		case 0x9:
+			upd->chn->retrigtick = 0;			
+		break;
+		
+		case 0xA:
+			if((upd->chn->volume += param) > 63)
+			{
+				upd->chn->volume = 63;
+			}
+			upd->flags |= MOD_FLG_UPDATEVOL;
+		break;
+		
+		case 0xB:
+			if((upd->chn->volume -= param) > 63)
+			{
+				upd->chn->volume = 0;
+			}
+			upd->flags |= MOD_FLG_UPDATEVOL;
+		break;
+		
+		case 0xC:
+		break;
+		
+		case 0xD:
+		break;
+		
+		case 0xE:
+		break;
+		
+		case 0xF:
+		break;
+	}
+}
+void efxF_row(struct update_s* upd)
+{
+	if(upd->note.param <= 31)
+	{
+		speed = upd->note.param;
+	}
+	else
+	{
+		realbpm = upd->note.param;
+		bpm = BPM(realbpm);
+	}
+}
+void efx0_tick(struct update_s* upd)
+{
+	u8 arpnote = upd->chn->note;
+	
+	if(++upd->chn->arptick > 2)
+	{
+		upd->chn->arptick = 0;
+	}
+	
+	switch(upd->chn->arptick)
+	{
+		default:
+		case 0: break;
+		case 1: arpnote += (upd->chn->param>>4); break;
+		case 2: arpnote += (upd->chn->param&0x0F); break;
+	}
+	
+	if(arpnote >= NUM_NOTES)
+	{
+		arpnote = NUM_NOTES-1;
+	}
+	
+	upd->chn->freq = periodTable[arpnote];
+	upd->flags |= MOD_FLG_UPDATEPITCH;
+}	
+
+void efx1_tick(struct update_s* upd)
+{
+	upd->chn->freq = pitchslide((s16)upd->chn->freq, -(s16)upd->chn->param);
+	upd->flags |= MOD_FLG_UPDATEPITCH;
+}	
+void efx2_tick(struct update_s* upd)
+{
+	upd->chn->freq = pitchslide(upd->chn->freq, (s16)upd->chn->param);
+	upd->flags |= MOD_FLG_UPDATEPITCH;
+}	
+
+/*inline*/ void portanote(struct update_s* upd)
+{
+	if(upd->chn->freq < upd->chn->portaperiod)
+	{
+		upd->chn->freq = pitchslide(upd->chn->freq, (s16)upd->chn->portaspeed);
+		if(upd->chn->freq > upd->chn->portaperiod)
+		{
+			upd->chn->freq = upd->chn->portaperiod;
+		}
+	}
+	else if (upd->chn->freq > upd->chn->portaperiod)
+	{
+		upd->chn->freq = pitchslide(upd->chn->freq, -(s16)upd->chn->portaspeed);
+		if(upd->chn->freq < upd->chn->portaperiod)
+		{
+			upd->chn->freq = upd->chn->portaperiod;
+		}
+	}
+	
+	upd->flags |= MOD_FLG_UPDATEPITCH;
+}
+void efx3_tick(struct update_s* upd)
+{
+	portanote(upd);
+}	
+
+
+
+inline void vibrato(struct update_s* upd)
+{
+	u8 abspos;
+	s8 pos = upd->chn->vib.pos;
+	u16 delta;
+	
+	if(pos > 31)
+	{
+		upd->chn->vib.pos -= 63;
+	}
+	
+	abspos = ABS8(pos);
+	
+	delta = vibratoTab[abspos];
+	delta *= upd->chn->vib.depth;
+	delta >>= 7;
+	
+	upd->chn->vib.slide = delta;
+	if(pos < 0)
+	{
+		upd->chn->vib.slide = -upd->chn->vib.slide;
+	}
+	
+	upd->chn->vib.pos += upd->chn->vib.speed;
+	
+	upd->flags |= MOD_FLG_UPDATEPITCH;
+}
+void efx4_tick(struct update_s* upd)
+{
+	vibrato(upd);
+}	
+void volslide(struct update_s* upd);
+void efx5_tick(struct update_s* upd)
+{
+	portanote(upd);
+	volslide(upd);
+}	
+void efx6_tick(struct update_s* upd)
+{
+	vibrato(upd);
+	volslide(upd);
+}	
+void efx7_tick(struct update_s* upd)
+{
+}	
+void efx8_tick(struct update_s* upd)
+{
+}	
+void efx9_tick(struct update_s* upd)
+{
+}
+void volslide(struct update_s* upd)
+{
+	u8 paramx = upd->chn->param>>4;
+	u8 paramy = upd->chn->param&0xF;
+	
+	if (!((paramx > 0) && (paramy > 0))) {
+		if (paramx > 0) {
+			if ((upd->chn->volume += paramx) > MAX_VOLUME) {
+				upd->chn->volume = MAX_VOLUME;
+			}
+		} else {
+			if ((upd->chn->volume -= paramy) < MIN_VOLUME) // wraparound
+			{
+				upd->chn->volume = MIN_VOLUME;
+			}
+		}
+
+		upd->flags |= MOD_FLG_UPDATEVOL;
+	}
+}
+void efxA_tick(struct update_s* upd)
+{
+	volslide(upd);
+}	
+void efxB_tick(struct update_s* upd)
+{
+}	
+void efxC_tick(struct update_s* upd)
+{
+}	
+void efxD_tick(struct update_s* upd)
+{
+}	
+void efxE_tick(struct update_s* upd)
+{
+	u8 param = upd->chn->param & 0x0F;
+	switch(upd->chn->param>>4)
+	{
+		case 0x0:
+		break;
+		
+		case 0x1:
+		break;
+		
+		case 0x2:
+		break;
+		
+		case 0x3:
+		break;
+		
+		case 0x4:
+		break;
+		
+		case 0x5:
+		break;
+		
+		case 0x6:
+		break;
+		
+		case 0x7:
+		break;
+		
+		case 0x8:
+		break;
+		
+		case 0x9:
+			if(++upd->chn->retrigtick >= param)
+			{
+				upd->note.number = upd->chn->note;
+				upd->flags |= MOD_FLG_PLAYNOTE;
+				upd->chn->retrigtick = 0;
+			}
+		break;
+		
+		case 0xA:
+		break;
+		
+		case 0xB:
+		break;
+		
+		case 0xC:
+			if(param <= curtick)
+			{
+				upd->chn->volume = 0;
+				upd->flags |= MOD_FLG_UPDATEVOL;
+			}
+		break;
+		
+		case 0xD:
+		break;
+		
+		case 0xE:
+		break;
+		
+		case 0xF:
+		break;
+	}
+}
+void efxF_tick(struct update_s* upd)
+{
+}
+
+// called to begin the song
+void play()
+{
+	asm("cli"); // stop interrupts
+	CLKPR = 0x80;
+	CLKPR = 0x80;
+	
+	initmodule(); // setup the module
+	
+	TCCR0A =(1<<WGM01); // clear timer on compare match (CTC)
+	
+#if TMRDIV == 8
+	TCCR0B =(1<<CS01);  		// clkI/O/8 (From prescaler)
+#else
+	TCCR0B =(1<<CS01) | (1<<CS00);  // clkI/O/64 (From prescaler)
+#endif
+
+	OCR0A  = TMROCR;//(F_CPU >> 3) / F_DAC;	// 16Mhz/8 / dacfreq
+	
+	/* for PWM:
+	// TCCR2A:
+	//		COM2A1:
+	//		Clear OC2A on Compare Match, set OC2A at BOTTOM, 
+	//		(non-inverting mode).
+	//		COM2B1:
+	//		Clear OC2B on Compare Match, set OC2B at BOTTOM,
+	//		(non-inverting mode).
+	//		WGM21 & WGM20:
+	//		Fast PWM
+	*/
+    	TCCR1A =(1<<COM1A1)|(1<<COM1B1)|(1<<WGM12)|(1<<WGM10);
+	TCCR1A &= (~(1<<WGM13) | ~(1<<WGM11));
+    	TCCR1B =(1<<CS10); //clkT2S/(No prescaling)
+
+#if MCU == atmega328p
+    	TCCR2A =(1<<COM2A1)|(1<<COM2B1)|(1<<WGM21)|(1<<WGM20);//0b10100011;
+    	TCCR2B =(1<<CS20); //clkT2S/(No prescaling)
+#else 
+# if MCU == atmega32u4
+    	TCCR3A =(1<<COM3A1)|(1<<COM3B1)|(1<<WGM32)|(1<<WGM30);//0b10100011;
+    	TCCR3B =(1<<CS30); //clkT2S/(No prescaling)
+# endif
+#endif
+
+	TIMSK0 =(1<<OCIE0A); //Timer/Counter0 Output Compare Match A Interrupt Enable
+	
+	DDRD |= 0b11111000; //enable our output
+	DDRD &= ~0b00000100;
+
+	DDRB = 0b11111111;
+
+	DDRC |= 0b01000000;
+	
+	playtick = 0;
+	
+	asm("sei");	// enable interrupts (our sound generation one)
+	
+	for(;;)
+	{
+		if(playtick > 0)
+		{
+			playtick--;
+			tick();
+		}
+	}
+}
+
+static u8 lastsampleleft = 0x7f;
+static u8 lastsampleright = 0x7f;
+static s8 thissample;
+static s8 nextsample;
+static s8 newsample;
+static s16 sampleleft;
+static s16 sampleright;
+ISR(TIMER0_COMPA_vect)
+{
+	register u8 idx;
+	register struct audiochannel_s* cur;
+	
+	u8 lights = 0;
+	
+	OCR_LEFT = lastsampleleft;
+	OCR_RIGHT = lastsampleright;
+	//PORTD = lastsample;
+
+	// we trying to render sample in the middle of a mixer/channel update
+	// allow update to continue without delay
+	// this will slow down the song if the update takes way too long:
+	// we play extra of the same samples, the song gets lower in pitch
+	// and slower.
+	if(in_update == 1)
+		return;
+	
+	if(song_state == SONG_STATE_PLAY)
+	{
+		if(++ticktimer > bpm)
+		{
+			/*if(!(PIND>>2&1))
+			{
+				if(realbpm <= 5)
+					realbpm = DEFAULT_BPM;
+				else
+					realbpm -= 5;
+				
+				bpm = BPM(realbpm);
+			}*/
+			++playtick;
+			ticktimer = 0;
+		}
+	}	
+
+#ifndef DEBUG	
+	sampleleft = sampleright = 0;
+	for( idx=0; idx<PATTERN_CHANNELS; ++idx )
+	{
+		cur = &mixchn[idx];
+		if(cur->offset)
+		{	
+			// lerp the samples(smoother waves)
+			//sample += ((s16)readsongbytesigned(cur->offset+(cur->pos>>8))) * cur->volume;
+			thissample = readsongbytesigned(cur->offset+(cur->pos>>8));
+			
+			if(cur->volume > 0)
+			{
+				lights |= 1<<(idx+4);
+			}
+
+			if((cur->pos += cur->inc) >= cur->length)
+			{
+				if(cur->looplength)
+				{
+					cur->pos -= cur->looplength;
+				}
+				else
+				{
+					cur->offset = 0;
+					cur->length = 0;
+					cur->looplength = 0;
+				}
+			}
+			
+			//nextsample = readsongbytesigned(cur->offset+(cur->pos>>8));
+			//newsample = (((s16)(nextsample-thissample) * (cur->pos&0xFF)) >>8) + thissample;		
+			newsample = thissample;
+
+
+			sampleleft += (((63-cur->pan)*newsample)>>6) * cur->volume;
+			sampleright += (((cur->pan)*newsample)>>6) * cur->volume;
+		}
+	}
+#endif
+	
+	lastsampleleft = 128 - (sampleleft >> 8);
+	lastsampleright = 128 - (sampleright >> 8);
+	PORTD = lights;
+}
+
+int main(void)
+{
+	//play if we have a valid song
+	if(havevalidsong())
+	{
+		play();
+	}	
+	
+	// else just hang
+	while(1)
+	{
+		//TODO: add some sort of notification of invalid song
+	}
+}

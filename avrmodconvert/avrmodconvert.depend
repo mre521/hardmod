@@ -1,0 +1,27 @@
+# depslib dependency file v1.0
+1312235925 source:/home/eric/workspace/avrmodconvert/main.cpp
+	<iostream>
+	<fstream>
+	<string>
+	<vector>
+	<unistd.h>
+	<cstring>
+
+1317086095 
+
+1317086095 source:c:\documents and settings\eric\my documents\codeblocks projects\avr_modplayer\avrmodconvert\main.cpp
+	<iostream>
+	<fstream>
+	<string>
+	<vector>
+	<unistd.h>
+	<cstring>
+
+1329965812 source:/home/coding/git/hardmod/avrmodconvert/main.cpp
+	<iostream>
+	<fstream>
+	<string>
+	<vector>
+	<unistd.h>
+	<cstring>
+

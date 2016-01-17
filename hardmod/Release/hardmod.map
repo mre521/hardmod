@@ -1,0 +1,597 @@
+Archive member included because of file (symbol)
+
+/usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodhi4.o)
+                              hardmod.o (__udivmodhi4)
+/usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodsi4.o)
+                              hardmod.o (__udivmodsi4)
+/usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_exit.o)
+                              /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o (exit)
+/usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_copy_data.o)
+                              format.o (__do_copy_data)
+/usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_clear_bss.o)
+                              hardmod.o (__do_clear_bss)
+
+Allocating common symbols
+Common symbol       size              file
+
+inst                0xf8              hardmod.o
+nextorder           0x1               hardmod.o
+ticktimer           0x2               hardmod.o
+breakrow            0x1               hardmod.o
+realbpm             0x1               hardmod.o
+playtick            0x1               hardmod.o
+curtick             0x1               hardmod.o
+song_state          0x1               hardmod.o
+sections            0xf               hardmod.o
+curorder            0x1               hardmod.o
+dacPeriod           0x4               hardmod.o
+channel             0x6c              hardmod.o
+bpm                 0x2               hardmod.o
+order               0x80              hardmod.o
+bpmtab              0x1c0             hardmod.o
+currow              0x1               hardmod.o
+realdac             0x2               hardmod.o
+breakjump           0x1               hardmod.o
+speed               0x1               hardmod.o
+curpattern          0x5               hardmod.o
+mixchn              0x48              hardmod.o
+sample              0x3e              hardmod.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+text             0x00000000         0x00020000         xr
+data             0x00800060         0x0000ffa0         rw !x
+eeprom           0x00810000         0x00010000         rw !x
+fuse             0x00820000         0x00000400         rw !x
+lock             0x00830000         0x00000400         rw !x
+signature        0x00840000         0x00000400         rw !x
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+Address of section .data set to 0x800100
+LOAD /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+LOAD format.o
+LOAD hardmod.o
+LOAD /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a
+LOAD /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/libc.a
+LOAD /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a
+
+.hash
+ *(.hash)
+
+.dynsym
+ *(.dynsym)
+
+.dynstr
+ *(.dynstr)
+
+.gnu.version
+ *(.gnu.version)
+
+.gnu.version_d
+ *(.gnu.version_d)
+
+.gnu.version_r
+ *(.gnu.version_r)
+
+.rel.init
+ *(.rel.init)
+
+.rela.init
+ *(.rela.init)
+
+.rel.text
+ *(.rel.text)
+ *(.rel.text.*)
+ *(.rel.gnu.linkonce.t*)
+
+.rela.text
+ *(.rela.text)
+ *(.rela.text.*)
+ *(.rela.gnu.linkonce.t*)
+
+.rel.fini
+ *(.rel.fini)
+
+.rela.fini
+ *(.rela.fini)
+
+.rel.rodata
+ *(.rel.rodata)
+ *(.rel.rodata.*)
+ *(.rel.gnu.linkonce.r*)
+
+.rela.rodata
+ *(.rela.rodata)
+ *(.rela.rodata.*)
+ *(.rela.gnu.linkonce.r*)
+
+.rel.data
+ *(.rel.data)
+ *(.rel.data.*)
+ *(.rel.gnu.linkonce.d*)
+
+.rela.data
+ *(.rela.data)
+ *(.rela.data.*)
+ *(.rela.gnu.linkonce.d*)
+
+.rel.ctors
+ *(.rel.ctors)
+
+.rela.ctors
+ *(.rela.ctors)
+
+.rel.dtors
+ *(.rel.dtors)
+
+.rela.dtors
+ *(.rela.dtors)
+
+.rel.got
+ *(.rel.got)
+
+.rela.got
+ *(.rela.got)
+
+.rel.bss
+ *(.rel.bss)
+
+.rela.bss
+ *(.rela.bss)
+
+.rel.plt
+ *(.rel.plt)
+
+.rela.plt
+ *(.rela.plt)
+
+.text           0x00000000     0x5e00
+ *(.vectors)
+ .vectors       0x00000000       0x68 /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+                0x00000000                __vectors
+                0x00000000                __vector_default
+ *(.vectors)
+ *(.progmem.gcc*)
+ *(.progmem*)
+ .progmem.data  0x00000068     0x3336 hardmod.o
+                0x00000068                songdata
+                0x0000339e                . = ALIGN (0x2)
+                0x0000339e                __trampolines_start = .
+ *(.trampolines)
+ .trampolines   0x0000339e        0x0 linker stubs
+ *(.trampolines*)
+                0x0000339e                __trampolines_end = .
+ *(.jumptables)
+ *(.jumptables*)
+ *(.lowtext)
+ *(.lowtext*)
+                0x0000339e                __ctors_start = .
+ *(.ctors)
+                0x0000339e                __ctors_end = .
+                0x0000339e                __dtors_start = .
+ *(.dtors)
+                0x0000339e                __dtors_end = .
+ SORT(*)(.ctors)
+ SORT(*)(.dtors)
+ *(.init0)
+ .init0         0x0000339e        0x0 /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+                0x0000339e                __init
+ *(.init0)
+ *(.init1)
+ *(.init1)
+ *(.init2)
+ .init2         0x0000339e        0xc /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+ *(.init2)
+ *(.init3)
+ *(.init3)
+ *(.init4)
+ .init4         0x000033aa       0x16 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_copy_data.o)
+                0x000033aa                __do_copy_data
+ .init4         0x000033c0       0x10 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_clear_bss.o)
+                0x000033c0                __do_clear_bss
+ *(.init4)
+ *(.init5)
+ *(.init5)
+ *(.init6)
+ *(.init6)
+ *(.init7)
+ *(.init7)
+ *(.init8)
+ *(.init8)
+ *(.init9)
+ .init9         0x000033d0        0x8 /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+ *(.init9)
+ *(.text)
+ .text          0x000033d8        0x4 /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+                0x000033d8                __vector_22
+                0x000033d8                __vector_1
+                0x000033d8                __vector_24
+                0x000033d8                __vector_12
+                0x000033d8                __bad_interrupt
+                0x000033d8                __vector_6
+                0x000033d8                __vector_3
+                0x000033d8                __vector_23
+                0x000033d8                __vector_25
+                0x000033d8                __vector_11
+                0x000033d8                __vector_13
+                0x000033d8                __vector_17
+                0x000033d8                __vector_19
+                0x000033d8                __vector_7
+                0x000033d8                __vector_5
+                0x000033d8                __vector_4
+                0x000033d8                __vector_9
+                0x000033d8                __vector_2
+                0x000033d8                __vector_21
+                0x000033d8                __vector_15
+                0x000033d8                __vector_8
+                0x000033d8                __vector_10
+                0x000033d8                __vector_16
+                0x000033d8                __vector_18
+                0x000033d8                __vector_20
+ .text          0x000033dc        0x0 format.o
+ .text          0x000033dc        0x0 hardmod.o
+ .text          0x000033dc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodhi4.o)
+ .text          0x000033dc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodsi4.o)
+ .text          0x000033dc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_exit.o)
+ .text          0x000033dc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_copy_data.o)
+ .text          0x000033dc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_clear_bss.o)
+                0x000033dc                . = ALIGN (0x2)
+ *(.text.*)
+ .text.efx0_row
+                0x000033dc        0xc hardmod.o
+                0x000033dc                efx0_row
+ .text.efx3_row
+                0x000033e8       0x5e hardmod.o
+                0x000033e8                efx3_row
+ .text.efx4_row
+                0x00003446       0x42 hardmod.o
+                0x00003446                efx4_row
+ .text.efx8_row
+                0x00003488       0x1a hardmod.o
+                0x00003488                efx8_row
+ .text.efxB_row
+                0x000034a2       0x24 hardmod.o
+                0x000034a2                efxB_row
+ .text.efxC_row
+                0x000034c6       0x16 hardmod.o
+                0x000034c6                efxC_row
+ .text.efxD_row
+                0x000034dc       0x4e hardmod.o
+                0x000034dc                efxD_row
+ .text.efxE_row
+                0x0000352a      0x144 hardmod.o
+                0x0000352a                efxE_row
+ .text.efxF_row
+                0x0000366e       0x2e hardmod.o
+                0x0000366e                efxF_row
+ .text.efx0_tick
+                0x0000369c       0x6c hardmod.o
+                0x0000369c                efx0_tick
+ .text.efx1_tick
+                0x00003708       0x4e hardmod.o
+                0x00003708                efx1_tick
+ .text.efx2_tick
+                0x00003756       0x4e hardmod.o
+                0x00003756                efx2_tick
+ .text.efxE_tick
+                0x000037a4       0x60 hardmod.o
+                0x000037a4                efxE_tick
+ .text.efx4_tick
+                0x00003804       0x78 hardmod.o
+                0x00003804                efx4_tick
+ .text.efxA_tick
+                0x0000387c       0x6e hardmod.o
+                0x0000387c                efxA_tick
+ .text.efx6_tick
+                0x000038ea       0xc8 hardmod.o
+                0x000038ea                efx6_tick
+ .text.readsongbyte
+                0x000039b2        0xa hardmod.o
+                0x000039b2                readsongbyte
+ .text.readsongbytesigned
+                0x000039bc        0xa hardmod.o
+                0x000039bc                readsongbytesigned
+ .text.readsongword
+                0x000039c6        0xe hardmod.o
+                0x000039c6                readsongword
+ .text.readsongblock
+                0x000039d4       0x28 hardmod.o
+                0x000039d4                readsongblock
+ .text.havevalidsong
+                0x000039fc       0x64 hardmod.o
+                0x000039fc                havevalidsong
+ .text.setpattern
+                0x00003a60       0x44 hardmod.o
+                0x00003a60                setpattern
+ .text.pitchslide
+                0x00003aa4       0x22 hardmod.o
+                0x00003aa4                pitchslide
+ .text.initmodule
+                0x00003ac6      0x2b0 hardmod.o
+                0x00003ac6                initmodule
+ .text.unpacknote
+                0x00003d76       0x6a hardmod.o
+                0x00003d76                unpacknote
+ .text.playnote
+                0x00003de0       0xec hardmod.o
+                0x00003de0                playnote
+ .text.update   0x00003ecc      0x1a8 hardmod.o
+                0x00003ecc                update
+ .text.row      0x00004074      0xac6 hardmod.o
+                0x00004074                row
+ .text.tickefx  0x00004b3a      0x79a hardmod.o
+                0x00004b3a                tickefx
+ .text.seek     0x000052d4       0x88 hardmod.o
+                0x000052d4                seek
+ .text.tick     0x0000535c       0xc6 hardmod.o
+                0x0000535c                tick
+ .text.efx1_row
+                0x00005422        0x2 hardmod.o
+                0x00005422                efx1_row
+ .text.efx2_row
+                0x00005424        0x2 hardmod.o
+                0x00005424                efx2_row
+ .text.efx5_row
+                0x00005426        0x2 hardmod.o
+                0x00005426                efx5_row
+ .text.efx6_row
+                0x00005428        0x2 hardmod.o
+                0x00005428                efx6_row
+ .text.efx7_row
+                0x0000542a        0x2 hardmod.o
+                0x0000542a                efx7_row
+ .text.efx9_row
+                0x0000542c        0x2 hardmod.o
+                0x0000542c                efx9_row
+ .text.efxA_row
+                0x0000542e        0x2 hardmod.o
+                0x0000542e                efxA_row
+ .text.portanote
+                0x00005430       0x90 hardmod.o
+                0x00005430                portanote
+ .text.efx3_tick
+                0x000054c0        0x6 hardmod.o
+                0x000054c0                efx3_tick
+ .text.efx5_tick
+                0x000054c6       0x52 hardmod.o
+                0x000054c6                efx5_tick
+ .text.vibrato  0x00005518       0x78 hardmod.o
+                0x00005518                vibrato
+ .text.efx7_tick
+                0x00005590        0x2 hardmod.o
+                0x00005590                efx7_tick
+ .text.efx8_tick
+                0x00005592        0x2 hardmod.o
+                0x00005592                efx8_tick
+ .text.efx9_tick
+                0x00005594        0x2 hardmod.o
+                0x00005594                efx9_tick
+ .text.volslide
+                0x00005596       0x6e hardmod.o
+                0x00005596                volslide
+ .text.efxB_tick
+                0x00005604        0x2 hardmod.o
+                0x00005604                efxB_tick
+ .text.efxC_tick
+                0x00005606        0x2 hardmod.o
+                0x00005606                efxC_tick
+ .text.efxD_tick
+                0x00005608        0x2 hardmod.o
+                0x00005608                efxD_tick
+ .text.efxF_tick
+                0x0000560a        0x2 hardmod.o
+                0x0000560a                efxF_tick
+ .text.play     0x0000560c      0x12a hardmod.o
+                0x0000560c                play
+ .text.__vector_14
+                0x00005736      0x614 hardmod.o
+                0x00005736                __vector_14
+ .text.main     0x00005d4a       0x46 hardmod.o
+                0x00005d4a                main
+ .text.libgcc   0x00005d90       0x28 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodhi4.o)
+                0x00005d90                __udivmodhi4
+ .text.libgcc   0x00005db8       0x44 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodsi4.o)
+                0x00005db8                __udivmodsi4
+ .text.libgcc   0x00005dfc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_exit.o)
+ .text.libgcc   0x00005dfc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_copy_data.o)
+ .text.libgcc   0x00005dfc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_clear_bss.o)
+                0x00005dfc                . = ALIGN (0x2)
+ *(.fini9)
+ .fini9         0x00005dfc        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_exit.o)
+                0x00005dfc                exit
+                0x00005dfc                _exit
+ *(.fini9)
+ *(.fini8)
+ *(.fini8)
+ *(.fini7)
+ *(.fini7)
+ *(.fini6)
+ *(.fini6)
+ *(.fini5)
+ *(.fini5)
+ *(.fini4)
+ *(.fini4)
+ *(.fini3)
+ *(.fini3)
+ *(.fini2)
+ *(.fini2)
+ *(.fini1)
+ *(.fini1)
+ *(.fini0)
+ .fini0         0x00005dfc        0x4 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_exit.o)
+ *(.fini0)
+                0x00005e00                _etext = .
+
+.data           0x00800100       0xbe load address 0x00005e00
+                0x00800100                PROVIDE (__data_start, .)
+ *(.data)
+ .data          0x00800100        0x0 /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+ .data          0x00800100        0x0 format.o
+ .data          0x00800100        0x0 hardmod.o
+ .data          0x00800100        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodhi4.o)
+ .data          0x00800100        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodsi4.o)
+ .data          0x00800100        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_exit.o)
+ .data          0x00800100        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_copy_data.o)
+ .data          0x00800100        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_clear_bss.o)
+ *(.data*)
+ .data.roweffect
+                0x00800100       0x20 hardmod.o
+                0x00800100                roweffect
+ .data.tickeffect
+                0x00800120       0x20 hardmod.o
+                0x00800120                tickeffect
+ .data.lastsampleright.1820
+                0x00800140        0x1 hardmod.o
+ .data.lastsampleleft.1819
+                0x00800141        0x1 hardmod.o
+ *(.rodata)
+ *(.rodata*)
+ .rodata.periodTable
+                0x00800142       0x48 format.o
+                0x00800142                periodTable
+ .rodata.songdata_len
+                0x0080018a        0x2 hardmod.o
+                0x0080018a                songdata_len
+ .rodata.rowUpdate
+                0x0080018c        0x9 hardmod.o
+                0x0080018c                rowUpdate
+ .rodata.tickUpdate
+                0x00800195        0x9 hardmod.o
+                0x00800195                tickUpdate
+ .rodata.vibratoTab
+                0x0080019e       0x20 hardmod.o
+ *(.gnu.linkonce.d*)
+                0x008001be                . = ALIGN (0x2)
+                0x008001be                _edata = .
+                0x008001be                PROVIDE (__data_end, .)
+
+.bss            0x008001be      0x452
+                0x008001be                PROVIDE (__bss_start, .)
+ *(.bss)
+ .bss           0x008001be        0x0 /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+ .bss           0x008001be        0x0 format.o
+ .bss           0x008001be        0x0 hardmod.o
+ .bss           0x008001be        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodhi4.o)
+ .bss           0x008001be        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_udivmodsi4.o)
+ .bss           0x008001be        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_exit.o)
+ .bss           0x008001be        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_copy_data.o)
+ .bss           0x008001be        0x0 /usr/lib/gcc/avr/4.5.3/avr5/libgcc.a(_clear_bss.o)
+ *(.bss*)
+ *(COMMON)
+ COMMON         0x008001be      0x452 hardmod.o
+                0x008001be                inst
+                0x008002b6                nextorder
+                0x008002b7                ticktimer
+                0x008002b9                breakrow
+                0x008002ba                realbpm
+                0x008002bb                playtick
+                0x008002bc                curtick
+                0x008002bd                song_state
+                0x008002be                sections
+                0x008002cd                curorder
+                0x008002ce                dacPeriod
+                0x008002d2                channel
+                0x0080033e                bpm
+                0x00800340                order
+                0x008003c0                bpmtab
+                0x00800580                currow
+                0x00800581                realdac
+                0x00800583                breakjump
+                0x00800584                speed
+                0x00800585                curpattern
+                0x0080058a                mixchn
+                0x008005d2                sample
+                0x00800610                PROVIDE (__bss_end, .)
+                0x00005e00                __data_load_start = LOADADDR (.data)
+                0x00005ebe                __data_load_end = (__data_load_start + SIZEOF (.data))
+
+.noinit         0x00800610        0x0
+                0x00800610                PROVIDE (__noinit_start, .)
+ *(.noinit*)
+                0x00800610                PROVIDE (__noinit_end, .)
+                0x00800610                _end = .
+                0x00800610                PROVIDE (__heap_start, .)
+
+.eeprom         0x00810000        0x0
+ *(.eeprom*)
+                0x00810000                __eeprom_end = .
+
+.fuse
+ *(.fuse)
+ *(.lfuse)
+ *(.hfuse)
+ *(.efuse)
+
+.lock
+ *(.lock*)
+
+.signature
+ *(.signature*)
+
+.stab           0x00000000      0x6cc
+ *(.stab)
+ .stab          0x00000000      0x6cc /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+
+.stabstr        0x00000000       0x54
+ *(.stabstr)
+ .stabstr       0x00000000       0x54 /usr/lib/gcc/avr/4.5.3/../../../avr/lib/avr5/crtm328p.o
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment
+ *(.comment)
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges
+ *(.debug_aranges)
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info
+ *(.debug_info)
+ *(.gnu.linkonce.wi.*)
+
+.debug_abbrev
+ *(.debug_abbrev)
+
+.debug_line
+ *(.debug_line)
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str
+ *(.debug_str)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+OUTPUT(hardmod.elf elf32-avr)
+LOAD linker stubs

@@ -1,0 +1,166 @@
+.section text
+
+;------------------------------------------------------------------------------------------
+; div16u - 16/16 bit unsigned division, max. speed optimized
+; deleni dvou neznaminkovych 16-bit cisel, maximalni optimalizace na rychlost
+;
+; dDd16r0u:dDd16r1u <- dDd16r0u:dDd16r1u div dDs16r0u:dDs16r1u
+; dRe16r0u:dRe16r1u <- dDd16r0u:dDd16r1u mod dDs16r0u:dDs16r1u
+;
+; words:  142 + ret                        (puvodni od ATMELu: 196 + ret)
+; cycles: 126/134/142 + ret [min/avg/max]  (puvodni od ATMELu: 148/172/196 + ret)
+;
+; Author: Pavel Borovsky, profesor@ti.cz, Czech Republic, Europe 3.6.2000
+;------------------------------------------------------------------------------------------
+
+	#define	dRe16r0u R14
+	#define	dRe16r1u R15
+	#define	dDd16r0u R16
+	#define	dDd16r1u R17
+	#define	dDs16r0u R18
+	#define	dDs16r1u R19
+
+.global div16u
+div16u:	clr	dRe16r0u
+	sub	dRe16r1u,dRe16r1u
+	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_1
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_1:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_2
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_2:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_3
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_3:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_4
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_4:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_5
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_5:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_6
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_6:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_7
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_7:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_8
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_8:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_9
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_9:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_10
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_10:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_11
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_11:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_12
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_12:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_13
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_13:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_14
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_14:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_15
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_15:	rol	dDd16r0u
+	rol	dDd16r1u
+	rol	dRe16r0u
+	rol	dRe16r1u
+	sub	dRe16r0u,dDs16r0u
+	sbc	dRe16r1u,dDs16r1u
+	brcc	d16u_16
+	add	dRe16r0u,dDs16r0u
+	adc	dRe16r1u,dDs16r1u
+d16u_16:	rol	dDd16r0u
+	rol	dDd16r1u
+	com	dDd16r0u
+	com	dDd16r1u
+	ret

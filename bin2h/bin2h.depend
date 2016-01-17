@@ -1,0 +1,7 @@
+# depslib dependency file v1.0
+1452995142 source:/home/coding/git/hardmod/bin2h/main.cpp
+	<string>
+	<iostream>
+	<fstream>
+	<cstring>
+
